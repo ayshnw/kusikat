@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Menu, X, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -7,10 +7,24 @@ const Navbar = ({ isSidebarOpen, setIsSidebarOpen, currentTime }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [user, setUser] = useState({
-    name: "Aisyah Nur Wahida",
-    phone: "+62 812 3456 7890",
-  });
+
+const [user, setUser] = useState({
+  name: "Pengguna",
+  phone: "",
+});
+
+// Ambil data user dari localStorage
+useEffect(() => {
+  const storedUser = localStorage.getItem("user");
+  if (storedUser) {
+    const parsedUser = JSON.parse(storedUser);
+    setUser({
+      name: parsedUser.username || "Pengguna",
+      phone: parsedUser.phone_number || "",
+    });
+  }
+}, []);
+
   const [newPhone, setNewPhone] = useState(user.phone);
 
   // password state

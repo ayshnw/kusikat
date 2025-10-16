@@ -27,16 +27,39 @@ export default function LoginForm() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.username || !formData.password) {
       alert("⚠️ Harap isi username dan password terlebih dahulu!");
       return;
     }
 
-    console.log("Login data:", formData);
-    alert("✅ Login berhasil!");
-    navigate("/dashboard"); // 🟢 Langsung ke dashboard
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      // Kalau backend kasih status bukan 200
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`❌ ${errorData.detail || "Username atau password salah!"}`);
+        return;
+      }
+
+      const data = await res.json();
+
+      // Simpan data user ke localStorage/sessionStorage kalau mau dipakai di dashboard
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      alert(`✅ Login berhasil! Selamat datang, ${data.user.username}`);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Gagal menghubungi server. Cek koneksi backend FastAPI!");
+    }
   };
+
 
   const handleGoogleLogin = () => {
     alert("Login with Google clicked! (Demo)");

@@ -74,7 +74,11 @@ const Dashboard = () => {
                 </div>
                 <div>
                   <h2 className="text-white text-3xl md:text-4xl font-bold">
-                    {getGreeting()}, BgToga
+                    {getGreeting()},{" "}
+                      {(() => {
+                        const user = JSON.parse(localStorage.getItem("user"));
+                        return user ? user.username : "Pengguna";
+                      })()}
                   </h2>
                   <p className="text-green-100 mt-1 text-sm">Sistem monitoring berjalan dengan baik</p>
                 </div>
