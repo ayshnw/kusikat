@@ -3,7 +3,7 @@ import { User, Phone, Mail, Lock } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import logo from "../assets/logo_kusikat.png";
 import { Link, useNavigate } from "react-router-dom";
-import { API_BASE_URL } from "../App"; // pastikan di App.jsx: export const API_BASE_URL = "http://127.0.0.1:8000/api";
+import { API_BASE_URL } from "../App";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -19,6 +19,7 @@ export default function Register() {
   const [otpCode, setOtpCode] = useState("");
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [message, setMessage] = useState("");
+  const API_BASE = "http://127.0.0.1:8000";
 
   // Update form field
   const handleChange = (e) => {
@@ -28,8 +29,9 @@ export default function Register() {
     });
   };
 
-  // Submit form
-  const handleSubmit = async () => {
+  // === REGISTER MANUAL ===
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     const { username, email, password, phoneNumber } = formData;
 
     if (!username || !email || !password || !phoneNumber) {
@@ -45,46 +47,45 @@ export default function Register() {
           username,
           email,
           password,
-          phone_number: phoneNumber, // sesuai field backend
+          phone_number: phoneNumber,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        alert(`❌ ${data.detail || "Gagal mendaftar!"}`);
+        alert(`❌ ${data.detail || data.message || "Gagal mendaftar!"}`);
         return;
       }
 
-      setMessage(data.message);
+      setMessage(data.message || "Pendaftaran berhasil!");
 
-      // Generate OTP demo
+      // OTP (demo)
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(otp);
       setOtpPopup(true);
 
-      alert(
-        `📱 Kode OTP telah dikirim ke WhatsApp: ${phoneNumber}\n\n(Kode demo: ${otp})`
-      );
+      alert(`📱 Kode OTP dikirim ke WhatsApp: ${phoneNumber}\n\n(Kode demo: ${otp})`);
     } catch (err) {
-      alert("❌ Gagal menghubungi server. Cek backend FastAPI.");
-      console.error(err);
+      console.error("❌ Gagal konek backend:", err);
+      alert("❌ Gagal menghubungi server. Pastikan FastAPI aktif.");
     }
   };
 
-  // Verifikasi OTP
+  // === VERIFIKASI OTP ===
   const handleVerifyOtp = () => {
-    if (otpCode === generatedOtp) {
+    if (otpCode.trim() === generatedOtp) {
       alert("✅ Verifikasi berhasil! Akun Anda telah dibuat.");
       setOtpPopup(false);
-      navigate("/login"); // redirect ke halaman login
+      navigate("/login", { replace: true });
     } else {
       alert("❌ Kode OTP salah. Silakan coba lagi.");
     }
   };
 
+  // === REGISTER DENGAN GOOGLE ===
   const handleGoogleSignUp = () => {
-    alert("Google Sign Up (Demo Only)");
+    window.location.href = `${API_BASE}/auth/google/login`;
   };
 
   return (
@@ -99,7 +100,7 @@ export default function Register() {
       {/* Main Card */}
       <div className="relative bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl overflow-hidden max-w-5xl w-full">
         <div className="grid md:grid-cols-2">
-          {/* Left Side - Branding */}
+          {/* Left Side */}
           <div className="bg-gradient-to-br from-white/90 to-gray-50/90 backdrop-blur-sm p-12 flex flex-col items-center justify-center relative">
             <div className="absolute top-0 left-0 w-full h-full opacity-10">
               <svg className="w-full h-full" viewBox="0 0 400 600">
@@ -170,7 +171,7 @@ export default function Register() {
                 />
               </div>
 
-              {/* Phone Number */}
+              {/* Phone */}
               <div className="relative">
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 bg-white rounded-full p-2">
                   <Phone size={20} className="text-gray-600" />
@@ -194,7 +195,7 @@ export default function Register() {
                 <span className="font-medium text-gray-700">Sign Up with Google</span>
               </button>
 
-              {/* Sign In Link */}
+              {/* Login Link */}
               <div className="text-center">
                 <p className="text-center text-sm text-gray-500 mt-4">
                   Already have an account?{" "}
@@ -204,7 +205,7 @@ export default function Register() {
                 </p>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit */}
               <button
                 onClick={handleSubmit}
                 className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 text-white font-bold py-4 rounded-full hover:from-yellow-500 hover:to-yellow-600 transition-all transform hover:scale-105 shadow-lg uppercase tracking-wide"

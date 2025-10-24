@@ -1,21 +1,37 @@
+# app/schemas.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
-class UserCreate(BaseModel):
+# -----------------------------------
+# Forgot Password Schemas
+# -----------------------------------
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class VerifyOTPRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    new_password: str
+
+# -----------------------------------
+# User Auth Schemas
+# -----------------------------------
+class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
     phone_number: str
 
-class UserLogin(BaseModel):
-    email: EmailStr
+class LoginRequest(BaseModel):
+    username: str
     password: str
 
 class UserResponse(BaseModel):
     id: int
     username: str
-    email: str
+    email: EmailStr
     phone_number: Optional[str] = None
-
-    class Config:
-        orm_mode = True
+    model_config = {"from_attributes": True}

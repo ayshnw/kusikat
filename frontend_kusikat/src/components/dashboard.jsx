@@ -4,6 +4,7 @@ import { Thermometer, Droplets, Leaf } from 'lucide-react';
 import Sidebar from "../assets/sidebar";
 import Header from "../assets/navbar";
 
+
 const Dashboard = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -76,8 +77,14 @@ const Dashboard = () => {
                   <h2 className="text-white text-3xl md:text-4xl font-bold">
                     {getGreeting()},{" "}
                       {(() => {
-                        const user = JSON.parse(localStorage.getItem("user"));
-                        return user ? user.username : "Pengguna";
+                        const userRaw = localStorage.getItem("user");
+                        if (!userRaw) return "Pengguna";
+                        try {
+                          const user = JSON.parse(userRaw);
+                          return user?.username || "Pengguna";
+                        } catch {
+                          return "Pengguna";
+                        }
                       })()}
                   </h2>
                   <p className="text-green-100 mt-1 text-sm">Sistem monitoring berjalan dengan baik</p>
