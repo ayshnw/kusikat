@@ -7,7 +7,7 @@ import Food from "./components/food";
 import { useEffect, useState } from "react";
 import { getMessage } from "./api";
 import GoogleSuccess from "./pages/GoogleSuccess";
-
+import GoogleCallback from "./pages/GoogleCallback";
 
 // URL API backend FastAPI
 export const API_BASE_URL = "http://127.0.0.1:8000";
@@ -27,6 +27,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />  
         <Route path="/login" element={<Login />} />
         <Route path="/google-success" element={<GoogleSuccess />} />    
+        <Route path="/auth/callback" element={<GoogleCallback />} />
         <Route path="/dashboard" element={<Dashboard />} />  
         <Route path="/food" element={<Food />} />  
       </Routes>

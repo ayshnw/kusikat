@@ -19,8 +19,9 @@ load_dotenv()
 router = APIRouter(prefix="/google", tags=["Google OAuth"])
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
-REDIRECT_URI = os.getenv("REDIRECT_URI")
-FRONTEND_URL = os.getenv("FRONTEND_URL")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+REDIRECT_URI = os.getenv("REDIRECT_URI")  # Harus: http://localhost:8000/auth/google/callback
+FRONTEND_URL = os.getenv("FRONTEND_URL")  # Harus: http://localhost:5173
 
 def get_db():
     db = SessionLocal()
@@ -45,10 +46,11 @@ def google_login():
 @router.get("/callback")
 def google_callback(code: str, db: Session = Depends(get_db)):
     try:
+        # ✅ Perbaiki: hapus spasi di URL
         token_url = "https://oauth2.googleapis.com/token"
         token_data = {
             "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": os.getenv("GOOGLE_CLIENT_SECRET"),
+            "client_secret": GOOGLE_CLIENT_SECRET,
             "code": code,
             "grant_type": "authorization_code",
             "redirect_uri": REDIRECT_URI,
@@ -57,6 +59,7 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         token_res.raise_for_status()
         tokens = token_res.json()
 
+        # Verifikasi ID token
         idinfo = id_token.verify_oauth2_token(
             tokens["id_token"], google_requests.Request(), GOOGLE_CLIENT_ID
         )
@@ -64,25 +67,40 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         google_id = idinfo["sub"]
         email = idinfo["email"]
         name = idinfo.get("name", email.split("@")[0])
+        # Ambil username dari name (hapus spasi jika ada)
+        username = name.replace(" ", "") if name else email.split("@")[0]
 
+        # Cari atau buat user
         user = db.query(User).filter(User.google_id == google_id).first()
         if not user:
+            # Cek apakah email sudah terdaftar manual
             user = db.query(User).filter(User.email == email).first()
             if user:
+                # Hubungkan akun manual dengan Google
                 user.google_id = google_id
-                user.username = name
+                user.username = username
             else:
-                user = User(username=name, email=email, google_id=google_id)
+                # Buat akun baru
+                user = User(
+                    username=username,
+                    email=email,
+                    google_id=google_id,
+                    # password tetap None → akun Google
+                )
                 db.add(user)
             db.commit()
             db.refresh(user)
 
+        # Buat JWT token
         access_token = create_access_token(
             data={"sub": user.email, "id": user.id},
             expires_delta=timedelta(minutes=60)
         )
 
-        return RedirectResponse(url=f"{FRONTEND_URL}/google-success?token={access_token}")
+        # ✅ Redirect ke frontend callback
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}"
+        )
 
     except Exception as e:
         print("Google login error:", str(e))

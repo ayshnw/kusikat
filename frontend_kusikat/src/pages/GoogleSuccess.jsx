@@ -18,7 +18,7 @@ export default function GoogleSuccess() {
     const fetchUserData = async () => {
       try {
         // Simpan token
-        localStorage.setItem("auth_token", token);
+        localStorage.setItem("acces_token", token);
 
         // Ambil data user lengkap dari backend
         const res = await fetch("http://127.0.0.1:8000/api/me", {
@@ -46,7 +46,7 @@ export default function GoogleSuccess() {
 
       } catch (error) {
         console.error("❌ Gagal proses login:", error);
-        localStorage.removeItem("auth_token");
+        localStorage.removeItem("acces_token");
         localStorage.removeItem("user");
         navigate("/login", { replace: true });
       }

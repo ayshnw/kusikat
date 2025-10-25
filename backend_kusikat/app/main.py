@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -11,7 +11,6 @@ import smtplib
 import random
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-
 from app.database import SessionLocal, engine, Base
 from app.models import User, PasswordResetToken
 from app.auth.google_auth import router as google_auth
@@ -21,7 +20,10 @@ from app.schemas import (
     LoginRequest,
     ForgotPasswordRequest,
     VerifyOTPRequest,
-    ResetPasswordRequest
+    ResetPasswordRequest,
+    SetPasswordRequest,
+    ChangePasswordRequest,
+    UpdatePhoneRequest
 )
 
 load_dotenv()
@@ -48,6 +50,19 @@ def get_db():
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 security = HTTPBearer()
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+) -> User:
+    payload = verify_token(credentials.credentials)
+    user_id = payload.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Token tidak valid")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan")
+    return user
 
 def verify_token(token: str):
     try:
@@ -127,7 +142,8 @@ def get_me(
         "email": user.email,
         "username": user.username,
         "phone_number": user.phone_number,
-        "google_id": user.google_id
+        "google_id": user.google_id,
+        "has_password": user.password is not None
     }
 
 @app.get("/")
@@ -209,3 +225,54 @@ def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db))
     user.password = hash_password(request.new_password)
     db.commit()
     return {"message": "Password berhasil diubah!"}
+
+# --- 1. Atur Password (untuk user Google yang belum punya password) ---
+@app.post("/api/user/set-password")
+def set_password(
+    request: SetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.password is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password sudah diatur. Gunakan fitur 'Ganti Password'."
+        )
+    # Set password baru
+    current_user.password = hash_password(request.new_password)
+    db.commit()
+    return {"message": "Password berhasil diatur"}
+
+# --- 2. Ganti Password (hanya jika sudah punya password) ---
+@app.put("/api/user/password")
+def change_password(
+    request: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if current_user.password is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Akun ini belum memiliki password. Silakan atur password terlebih dahulu."
+        )
+    if not verify_password(request.old_password, current_user.password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password lama salah."
+        )
+    current_user.password = hash_password(request.new_password)
+    db.commit()
+    return {"message": "Password berhasil diubah"}
+
+# --- 3. Ubah Nomor Telepon (untuk semua user) ---
+@app.put("/api/user/phone")
+def update_phone(
+    request: UpdatePhoneRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Opsional: validasi format nomor HP Indonesia
+    # Misal: harus angka, minimal 10 digit, dll.
+    current_user.phone_number = request.phone_number
+    db.commit()
+    return {"message": "Nomor telepon berhasil diperbarui"}

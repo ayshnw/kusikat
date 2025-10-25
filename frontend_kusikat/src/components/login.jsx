@@ -51,7 +51,7 @@ const handleSubmit = async () => {
     const data = await res.json();
 
     // ✅ Simpan token & user ke localStorage
-    localStorage.setItem("auth_token", data.access_token); // ← ini penting!
+    localStorage.setItem("access_token", data.access_token); // ← ini penting!
     localStorage.setItem("user", JSON.stringify(data.user));
 
     alert(`✅ Login berhasil! Selamat datang, ${data.user.username}`);

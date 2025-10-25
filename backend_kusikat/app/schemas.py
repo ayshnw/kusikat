@@ -1,7 +1,20 @@
 # app/schemas.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from pydantic import BaseModel
 
+# -----------------------------------
+# Edit Password and Phone Schemas
+# -----------------------------------
+class SetPasswordRequest(BaseModel):
+    new_password: str
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+class UpdatePhoneRequest(BaseModel):
+    phone_number: str
 # -----------------------------------
 # Forgot Password Schemas
 # -----------------------------------
