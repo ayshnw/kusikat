@@ -44,9 +44,26 @@ def google_login():
     return RedirectResponse(url=google_auth_url)
 
 @router.get("/callback")
-def google_callback(code: str, db: Session = Depends(get_db)):
+def google_callback(
+    code: str | None = None,
+    error: str | None = None,
+    db: Session = Depends(get_db)
+):
+    # 🧩 1. Tangani kasus user menekan "Cancel" di halaman Google
+    if error == "access_denied":
+        # Arahkan balik ke halaman login frontend dengan pesan error
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/login?error=access_denied"
+        )
+
+    # 🧩 2. Tangani jika tidak ada code sama sekali
+    if not code:
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/login?error=missing_code"
+        )
+
     try:
-        # ✅ Perbaiki: hapus spasi di URL
+        # ✅ Tukar authorization code dengan access token
         token_url = "https://oauth2.googleapis.com/token"
         token_data = {
             "client_id": GOOGLE_CLIENT_ID,
@@ -55,11 +72,12 @@ def google_callback(code: str, db: Session = Depends(get_db)):
             "grant_type": "authorization_code",
             "redirect_uri": REDIRECT_URI,
         }
+
         token_res = requests.post(token_url, data=token_data)
         token_res.raise_for_status()
         tokens = token_res.json()
 
-        # Verifikasi ID token
+        # ✅ Verifikasi ID token Google
         idinfo = id_token.verify_oauth2_token(
             tokens["id_token"], google_requests.Request(), GOOGLE_CLIENT_ID
         )
@@ -67,40 +85,38 @@ def google_callback(code: str, db: Session = Depends(get_db)):
         google_id = idinfo["sub"]
         email = idinfo["email"]
         name = idinfo.get("name", email.split("@")[0])
-        # Ambil username dari name (hapus spasi jika ada)
         username = name.replace(" ", "") if name else email.split("@")[0]
 
-        # Cari atau buat user
+        # ✅ Cari atau buat user di database
         user = db.query(User).filter(User.google_id == google_id).first()
         if not user:
-            # Cek apakah email sudah terdaftar manual
             user = db.query(User).filter(User.email == email).first()
             if user:
-                # Hubungkan akun manual dengan Google
                 user.google_id = google_id
                 user.username = username
             else:
-                # Buat akun baru
-                user = User(
-                    username=username,
-                    email=email,
-                    google_id=google_id,
-                    # password tetap None → akun Google
-                )
+                user = User(username=username, email=email, google_id=google_id)
                 db.add(user)
             db.commit()
             db.refresh(user)
 
-        # Buat JWT token
+        # ✅ Buat JWT token
         access_token = create_access_token(
             data={"sub": user.email, "id": user.id},
             expires_delta=timedelta(minutes=60)
         )
 
-        # ✅ Redirect ke frontend callback
+        # ✅ Redirect ke frontend
         return RedirectResponse(
             url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}"
         )
+
+    except Exception as e:
+        print("Google login error:", str(e))
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/login?error=google_failed"
+        )
+
 
     except Exception as e:
         print("Google login error:", str(e))
