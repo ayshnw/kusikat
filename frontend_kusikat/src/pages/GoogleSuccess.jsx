@@ -18,7 +18,7 @@ export default function GoogleSuccess() {
     const fetchUserData = async () => {
       try {
         // Simpan token
-        localStorage.setItem("acces_token", token);
+        localStorage.setItem("access_token", token);
 
         // Ambil data user lengkap dari backend
         const res = await fetch("http://127.0.0.1:8000/api/me", {
